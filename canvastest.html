@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Palm Rejection Demo</title>
+    <style>
+      #canvas{
+        border: solid 1px #000;
+        box-sizing: border-box;
+        touch-action: none;
+      }
+    </style>
+  </head>
+
+<body>
+  <canvas id="canvas" width="500" height="500"></canvas>
+  <input type="button" value="clear" id="clear">
+  ペンモード：
+  <select id="select">
+    <option value="direct" selected>ゆび</option>
+    <option value="stylus">スタイラス</option>
+  </select>
+  <div id="message"></div>
+ 
+  <script>
+    const message = document.getElementById('message')
+    const canvas = document.getElementById('canvas')
+    const select = document.getElementById('select')
+    const ctx = canvas.getContext('2d')
+ 
+    const width = 500
+    const height = 500
+    let clickFlg = 0  // クリック中の判定 1:クリック開始 2:クリック中
+    let penMode = 'direct'
+
+    // 描画
+    const draw = (x, y) => {
+      ctx.lineWidth = 5
+      ctx.strokeStyle = 'rgba(255,0,0,1)'
+      if (clickFlg === 1) {
+        clickFlg = 2
+        ctx.beginPath()
+        ctx.lineCap = 'round'
+        ctx.moveTo(x, y)
+      } else {
+        ctx.lineTo(x, y)
+      }
+      ctx.stroke()
+    };
+
+    // 白背景
+    const setBgColor = () => {
+      ctx.fillStyle = 'rgb(255,255,255)'
+      ctx.fillRect(0,0,width,height)
+    };
+
+    // touchesから、palm疑いのあるtouchを除き、指・ペンらしいtouch の indexを返す
+    const getStylusTouchIndex = (touches) => {
+      if (penMode === 'direct') return 0
+      for (let i = 0; i < touches.length; ++i) {
+        const touch = touches.item(i)
+        if (touch.touchType === 'stylus') return i
+        if ((touch.radiusX < 13) && (touch.radiusY < 13)) return i
+      }
+      return -1
+    }
+
+    // DEBUG 情報表示
+    const info = (touches) => {
+      let msg = ''
+      Object.keys(touches).forEach(key => {
+        msg += `touches[${key}]:<br>force:${touches[key].force}, touchType:${touches[key].touchType} <br>`
+        msg += `radiusX:${touches[key].radiusX}<br>radiusY:${touches[key].radiusX}`
+      })
+      message.innerHTML = msg
+    }
+
+    // pen mode select
+    select.addEventListener('change', () => penMode = select.value)
+
+    // touch events
+    canvas.addEventListener('touchstart', () => clickFlg = 1)
+    canvas.addEventListener('touchend', () => clickFlg = 0)
+    canvas.addEventListener('touchmove', (e) => {
+      if (!clickFlg) return false
+      const index = getStylusTouchIndex(e.touches)
+      if (index >= 0) draw(e.touches.item(index).pageX, e.touches.item(index).pageY)
+      info(e.touches)
+    })
+
+    // mouse events
+    canvas.addEventListener('mousedown', () => clickFlg = 1)
+    canvas.addEventListener('mouseup', () => clickFlg = 0)
+    canvas.addEventListener('mousemove', (e) => {
+      if(!clickFlg) return false
+      draw(e.offsetX, e.offsetY)
+    })
+ 
+    // clear button
+    const clear = document.getElementById('clear')
+    clear.addEventListener('click', () => {
+      ctx.clearRect(0,0,width,height)
+      setBgColor()
+    });
+
+    setBgColor()
+  </script>
+</body>
+</html>
